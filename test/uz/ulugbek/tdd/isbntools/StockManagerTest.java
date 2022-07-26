@@ -1,36 +1,40 @@
 package uz.ulugbek.tdd.isbntools;
 
+import org.junit.Before;
 import org.junit.Test;
 import uz.ulugbek.tdd.isbntools.models.Book;
 import uz.ulugbek.tdd.isbntools.services.ExternalISBNDataService;
 
 import static org.junit.Assert.assertEquals;
 
-import static org.junit.Assert.fail;
 import static org.mockito.Mockito.*;
 
 public class StockManagerTest {
 
+    private ExternalISBNDataService testWebService;
+    private ExternalISBNDataService testDatabaseService;
+    private StockManager stockManager;
+
+    @Before
+    public void setup(){
+        System.out.println("setup");
+
+        testWebService = mock(ExternalISBNDataService.class);
+        testDatabaseService = mock(ExternalISBNDataService.class);
+
+        stockManager = new StockManager();
+
+        stockManager.setExternalISBNDataService(testWebService);
+        stockManager.setDatabaseISBNDataService(testDatabaseService);
+
+    }
+
     @Test
     public void stockManagerTest() {
 
-        ExternalISBNDataService externalISBNDataService = new ExternalISBNDataService() {
-            @Override
-            public Book lookup(String isbn) {
-                return new Book(isbn, "J. Smit", "Of Mice And Men");
-            }
-        };
+        when(testWebService.lookup("0735619670")).thenReturn(new Book("0735619670", "J. Smit", "Of Mice And Men"));
 
-        ExternalISBNDataService dataService = new ExternalISBNDataService() {
-            @Override
-            public Book lookup(String isbn) {
-                return null;
-            }
-        };
-
-        StockManager stockManager = new StockManager();
-        stockManager.setExternalISBNDataService(externalISBNDataService);
-        stockManager.setDatabaseISBNDataService(dataService);
+        when(testDatabaseService.lookup(anyString())).thenReturn(null);
 
         String locatorCode = stockManager.getLocatorCode("0735619670");
         assertEquals("9670J4", locatorCode);
@@ -39,37 +43,25 @@ public class StockManagerTest {
 
     @Test
     public void databaseIsUsedIfDataIsPresent() {
-        ExternalISBNDataService databaseservice = mock(ExternalISBNDataService.class);
-        ExternalISBNDataService webService = mock(ExternalISBNDataService.class);
 
-        when(databaseservice.lookup("0735619670")).thenReturn(new Book("0735619670", "sdfsd", "sdfsdf"));
-
-        StockManager stockManager = new StockManager();
-        stockManager.setExternalISBNDataService(webService);
-        stockManager.setDatabaseISBNDataService(databaseservice);
+        when(testDatabaseService.lookup("0735619670")).thenReturn(new Book("0735619670", "sdfsd", "sdfsdf"));
 
         String locatorCode = stockManager.getLocatorCode("0735619670");
 
-        verify(databaseservice, times(1)).lookup("0735619670");
-        verify(webService, times(0)).lookup("0735619670");
+        verify(testDatabaseService, times(1)).lookup("0735619670");
+        verify(testWebService, times(0)).lookup("0735619670");
     }
 
     @Test
     public void databaseIsUsedIfDataIsNotPresentInDatabase() {
-        ExternalISBNDataService databaseservice = mock(ExternalISBNDataService.class);
-        ExternalISBNDataService webService = mock(ExternalISBNDataService.class);
 
-        when(databaseservice.lookup("0735619670")).thenReturn(null);
-        when(webService.lookup("0735619670")).thenReturn(new Book("0735619670", "sdfsd", "sdfsdf"));
-
-        StockManager stockManager = new StockManager();
-        stockManager.setExternalISBNDataService(webService);
-        stockManager.setDatabaseISBNDataService(databaseservice);
+        when(testDatabaseService.lookup("0735619670")).thenReturn(null);
+        when(testWebService.lookup("0735619670")).thenReturn(new Book("0735619670", "sdfsd", "sdfsdf"));
 
         String locatorCode = stockManager.getLocatorCode("0735619670");
 
-        verify(databaseservice, times(1)).lookup("0735619670");
-        verify(webService, times(1)).lookup("0735619670");
+        verify(testDatabaseService, times(1)).lookup("0735619670");
+        verify(testWebService, times(1)).lookup("0735619670");
     }
 
 }
